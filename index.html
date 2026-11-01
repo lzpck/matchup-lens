@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>matchup-lens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ground: #f2f4f7; --surface: #fff; --raised: #eceff3; --border: #e3e6ea; --rule: #eef0f3; --control: #cfd4db;
+    --text: #0a0a0a; --muted: #5f656d; --accent: #141414; --hue: #1d5fbf;
+    --positive: #2e7d32; --negative: #c4242a;
+    --radius-card: 8px; --radius-control: 6px; --gap: 12px; --pad: 24px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--text); font: 14px/1.5 "Geist", Inter, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  .app { display: grid; grid-template-columns: 296px minmax(0, 1fr); min-height: 100vh; }
+  aside { padding: 28px var(--pad); position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  main { padding: 32px var(--pad) 48px 8px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 500; margin-bottom: 28px; }
+  .mark { width: 28px; height: 28px; border-radius: var(--radius-control); background: var(--hue); display: grid; place-items: center; }
+  .mark svg { width: 18px; height: 18px; }
+  form { display: grid; gap: var(--gap); }
+  label.f { display: grid; gap: 4px; color: var(--muted); font-size: 12px; }
+  input, select, button { font: inherit; height: 36px; border-radius: var(--radius-control); }
+  input[type=text], select { border: 1px solid var(--control); background: var(--surface); color: var(--text); padding: 0 10px; width: 100%; }
+  button:not(.tog) { border: 0; background: var(--accent); color: #fff; font-weight: 500; padding: 0 16px; cursor: pointer; transition: transform .1s; }
+  button:active { transform: scale(.98); }
+  :focus-visible { outline: 2px solid var(--hue); outline-offset: 2px; }
+  .win { display: flex; gap: 8px; align-items: end; }
+  .win label.f { flex: 1; }
+  .note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+  .err { color: var(--negative); }
+  #status { min-height: 20px; font-size: 12px; margin-top: 12px; color: var(--muted); }
+  #roster { margin-top: 32px; }
+  h2 { font-size: 16px; font-weight: 500; margin: 0 0 8px; }
+  #roster h3 { font-size: 12px; font-weight: 400; color: var(--muted); margin: 16px 0 2px; }
+  #roster label { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-height: 34px; padding: 4px 8px; margin: 0 -8px; border-radius: var(--radius-control); cursor: pointer; }
+  #roster label:hover { background: var(--raised); }
+  #roster input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+  .nm { flex: 1 1 auto; } /* nome inteiro; os chips descem de linha se faltar espaço */
+  .chip { white-space: nowrap; background: var(--raised); color: #3d3d3d; border-radius: 10px; padding: 0 8px; font-size: 12px; line-height: 20px; }
+  .chip.inj { background: #ffedea; color: #831c1e; }
+  h1 { font-size: 24px; font-weight: 500; letter-spacing: -.01em; margin: 0; line-height: 1.25; }
+  #finding { margin: 6px 0 24px; font-size: 16px; max-width: 70ch; }
+  #panels { display: grid; gap: var(--gap); }
+  .card { background: var(--surface); border-radius: var(--radius-card); padding: var(--pad); }
+  .card h2 { font-size: 18px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+  .card h2 span { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .kpis { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: var(--gap); margin: 16px 0 20px; }
+  .kpi small { display: block; color: var(--muted); font-size: 12px; }
+  .kpi b { font-size: 30px; font-weight: 700; line-height: 1.2; }
+  .kpi.main b { font-size: 40px; color: var(--hue); }
+  .kpi i { font-style: normal; color: var(--muted); font-size: 14px; margin-left: 4px; }
+  .up { color: var(--positive); } .down { color: var(--negative); }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th { font-weight: 400; color: var(--muted); font-size: 12px; text-align: left; padding: 8px 8px; white-space: nowrap; border-bottom: 1px solid var(--border); }
+  td { padding: 0 8px; height: 44px; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  .num { text-align: right; }
+  .pts { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+  .bar { height: 8px; background: var(--hue); border-radius: 2px; }
+  tr.wk td { font-weight: 500; }
+  tr.wk { cursor: pointer; }
+  tr.wk:hover td { background: var(--raised); }
+  .tot .pts span:last-child { font-weight: 700; }
+  .tog { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px; margin-left: -6px; border-radius: var(--radius-control); font-weight: 500; }
+  .tog:hover { background: var(--raised); }
+  .tog:focus-visible { outline: 2px solid var(--hue); }
+  .tog::before { content: ""; width: 6px; height: 6px; border: solid var(--muted); border-width: 0 2px 2px 0; transform: rotate(-45deg); transition: transform .15s; }
+  .tog[aria-expanded=true]::before { transform: rotate(45deg); }
+  tr.pl td { color: var(--muted); }
+  tr.pl td:nth-child(2) { color: var(--text); }
+  .empty { color: var(--muted); }
+  #panels:not(:has(.card + .card)) { max-width: 760px; margin-inline: auto; }
+  .empty > p, .empty li { max-width: 70ch; }
+  .empty ol { padding-left: 18px; margin: 8px 0 0; }
+  @media (min-width: 1100px) {
+    #panels:has(.card + .card) { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+    #panels:has(.card + .card) .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    #panels:has(.card + .card) .kpi.main { grid-column: 1 / -1; }
+    #panels:has(.card + .card) td, #panels:has(.card + .card) th { padding-left: 6px; padding-right: 6px; }
+  }
+  @media (max-width: 800px) {
+    .app { grid-template-columns: 1fr; }
+    aside { position: static; height: auto; padding: 16px; }
+    main { padding: 0 16px 32px; }
+    .card { padding: 16px; }
+    .kpis { grid-template-columns: 1fr 1fr; }
+    .kpi.main { grid-column: 1 / -1; }
+  }
+  @media (prefers-reduced-motion: reduce) { button { transition: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <div class="brand"><span class="mark" aria-hidden="true"><svg viewBox="0 0 18 18" fill="none" stroke="#fff" stroke-width="2"><circle cx="8" cy="8" r="5"/><path d="M12 12l4 4"/></svg></span>matchup-lens</div>
+  <form id="top">
+    <label class="f">Username do Sleeper <input type="text" id="username" required autocomplete="username"></label>
+    <button>Carregar</button>
+    <label class="f">Liga <select id="league" disabled></select></label>
+    <div class="win"><label class="f">Janela <select id="window"><option>4</option><option>6</option><option selected>8</option></select></label><span class="note" style="margin:0 0 8px">jogos</span></div>
+  </form>
+  <div id="scoring" class="note"></div>
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="roster"></div>
+</aside>
+<main>
+  <h1>Como o adversário foi tratado</h1>
+  <p id="finding">Carregue seu username para ver como os jogadores da mesma posição pontuaram contra o adversário que o seu jogador vai enfrentar.</p>
+  <div id="panels"></div>
+</main>
+</div>
+
+<script type="module">
+import { POSITIONS, IDP_TOP, groupOf, groupsOf, isIdp, score, gamesVs, topPerWeek, playerGames, defenseTotals, averages, snapPct } from './src/core.js';
+import * as sl from './src/sleeper.js';
+
+const $ = (id) => document.getElementById(id);
+// Dados da API entram no DOM só como texto (textContent), nunca innerHTML.
+function el(tag, text, attrs = {}) {
+  const e = document.createElement(tag);
+  if (text != null) e.textContent = text;
+  Object.assign(e, attrs);
+  return e;
+}
+const fmt = (n) => (n == null ? '—' : n.toFixed(1));
+const status = (text, cls = '') => { $('status').replaceChildren(el('span', text, { className: cls })); };
+
+let ctx = null;   // { state, schedule, directory, games, failed, leagues, userId }
+let league = null; // { league, rosters }
+const doubt = new Set();
+
+$('top').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  doubt.clear(); league = null; render();
+  try {
+    status('Buscando usuário…');
+    const state = await sl.loadState();
+    const season = state.season;
+    const user = await sl.loadUser($('username').value.trim());
+    const leagues = await sl.loadLeagues(user.user_id, season);
+    if (!leagues.length) throw new Error(`Nenhuma liga do Sleeper em ${season}.`);
+    const schedule = await sl.loadSchedule(season);
+    // Semanas já jogadas; 9 cobre a janela padrão de 8 jogos mais um bye.
+    const weeks = [];
+    for (let w = Math.max(1, state.week - 9); w < state.week; w++) weeks.push(w);
+    status(`Baixando diretório de jogadores e ${weeks.length} semanas…`);
+    const [directory, { games, failed }] = await Promise.all([
+      sl.loadDirectory(),
+      sl.loadWeeks(season, weeks, schedule, (d, n) => status(`Baixando semanas: ${d} de ${n}…`)),
+    ]);
+    ctx = { state, schedule, directory, games, failed, leagues, userId: user.user_id };
+    $('league').replaceChildren(...leagues.map((l) => el('option', l.name, { value: l.league_id })));
+    $('league').disabled = false;
+    await pickLeague();
+  } catch (e) {
+    ctx = null;
+    status(e.message, 'err');
+    render();
+  }
+});
+
+async function pickLeague() {
+  try {
+    status('Carregando liga…');
+    league = await sl.loadLeague($('league').value);
+    doubt.clear();
+    const missing = ctx.failed.length ? ` Semanas sem dados (falha de rede): ${ctx.failed.join(', ')}.` : '';
+    status(`Semana ${ctx.state.week} da temporada ${ctx.state.season}.${missing}`, missing ? 'err' : '');
+  } catch (e) {
+    league = null;
+    status(e.message, 'err');
+  }
+  render();
+}
+$('league').addEventListener('change', pickLeague);
+$('window').addEventListener('change', render);
+
+function render() {
+  renderRoster();
+  renderPanels();
+}
+
+function myPlayers() {
+  if (!ctx || !league) return [];
+  const r = league.rosters.find((x) => x.owner_id === ctx.userId || x.co_owners?.includes(ctx.userId));
+  return (r?.players ?? [])
+    .filter((id) => ctx.directory[id])
+    .map((id) => {
+      const d = ctx.directory[id];
+      // group: seção do roster (grupo da position); groups: um painel por grupo elegível (híbrido tem dois).
+      return { id, ...d, group: groupOf(d.position), groups: groupsOf(d.position, d.fantasyPositions), ...sl.resolveOpponent(id, ctx.directory, ctx.schedule, ctx.state.week) };
+    })
+    .sort((a, b) => POSITIONS.indexOf(a.group) - POSITIONS.indexOf(b.group) || a.name.localeCompare(b.name));
+}
+
+function renderRoster() {
+  const box = $('roster');
+  box.replaceChildren();
+  if (!league) { $('scoring').textContent = ''; return; }
+  box.append(el('h2', 'Meu roster'));
+  const s = league.league.scoring_settings;
+  const idpTxt = Object.keys(s).some((k) => k.startsWith('idp_')) ? `, ${s.idp_tkl_solo ?? 0} por tackle solo, ${s.idp_sack ?? 0} por sack, ${s.idp_int ?? 0} por INT` : '';
+  $('scoring').textContent = `Pontuação da liga: ${s.rec ?? 0} por recepção, ${s.pass_td ?? 0} por TD passado, ${s.rush_td ?? 0} por TD corrido${idpTxt}`;
+  const players = myPlayers();
+  if (!players.length) { box.append(el('p', 'Você não tem roster nesta liga.', { className: 'note' })); return; }
+  let pos = null;
+  for (const p of players) {
+    if (p.group !== pos) { pos = p.group; box.append(el('h3', pos)); }
+    const cb = el('input', null, { type: 'checkbox', checked: doubt.has(p.id) });
+    cb.addEventListener('change', () => { cb.checked ? doubt.add(p.id) : doubt.delete(p.id); renderPanels(); });
+    const label = el('label');
+    label.append(cb, el('span', p.name, { className: 'nm' }));
+    label.append(el('span', p.opponent ? `vs ${p.opponent}` : p.team ? 'bye' : 'sem time', { className: 'chip' }));
+    if (p.injury) label.append(el('span', p.injury, { className: 'chip inj' }));
+    box.append(label);
+  }
+  box.append(el('p', 'Marque quem está em dúvida.', { className: 'note' }));
+}
+
+const FINDING_DEFAULT = 'Carregue seu username para ver como os jogadores da mesma posição pontuaram contra o adversário que o seu jogador vai enfrentar.';
+
+function renderPanels() {
+  const out = $('panels');
+  out.replaceChildren();
+  const finding = $('finding');
+  const guide = () => {
+    const c = el('section', null, { className: 'card empty' });
+    c.append(el('h2', 'Como usar'));
+    const ol = el('ol');
+    for (const t of ['Digite seu username do Sleeper e carregue.', 'Escolha a liga e a janela de jogos.', 'Marque no roster os jogadores em dúvida: cada um ganha o jogo a jogo contra o adversário que vai enfrentar, na pontuação da sua liga.']) ol.append(el('li', t));
+    c.append(ol, el('p', 'É evidência, não veredito: a amostra é pequena e "mesma posição" ignora o papel (WR1 vs WR3).', { className: 'note' }));
+    out.append(c);
+  };
+  if (!league) { finding.textContent = FINDING_DEFAULT; guide(); return; }
+  const n = Number($('window').value);
+  const scoring = league.league.scoring_settings;
+  const picked = myPlayers().filter((x) => doubt.has(x.id));
+  if (!picked.length) {
+    finding.textContent = 'Marque no roster os jogadores em dúvida para ver a evidência.';
+    guide();
+    return;
+  }
+  let best = null;
+  for (const p of picked) {
+    for (const group of p.groups) {
+      const { box, delta, text } = panel(p, group, n, scoring);
+      out.append(box);
+      if (delta != null && (!best || Math.abs(delta) > Math.abs(best.delta))) best = { delta, text };
+    }
+  }
+  finding.textContent = best ? best.text : `Semana ${ctx.state.week}: sem comparação disponível para os jogadores marcados.`;
+}
+
+function panel(p, group, n, scoring) {
+  const box = el('section', null, { className: 'card' });
+  const week = ctx.state.week;
+  const h = el('h2', p.name);
+  h.append(el('span', `${p.groups.length > 1 ? `como ${group}` : group} · semana ${week}${p.opponent ? ` vs ${p.opponent}` : ''}`));
+  box.append(h);
+  const done = (extra = {}) => ({ box, delta: null, text: '', ...extra });
+  if (!p.opponent) {
+    box.append(el('p', p.team ? 'Sem jogo nesta semana (bye).' : 'Jogador sem time.', { className: 'empty' }));
+    return done();
+  }
+  const mine = averages(playerGames(ctx.games, p.id, n).map((g) => score(g.stats, scoring)));
+  // Ordenado por pontos em cada semana; em IDP só os IDP_TOP que mais pontuaram (total, média e tabela usam o mesmo corte).
+  const rows = topPerWeek(gamesVs(ctx.games, p.opponent, group, n), scoring, isIdp(group) ? IDP_TOP : Infinity);
+  const t = defenseTotals(rows, scoring);
+
+  if (!rows.length) {
+    box.append(el('p', `Sem jogos de ${group} contra ${p.opponent} nesta janela.`, { className: 'empty' }));
+    return done();
+  }
+  const delta = t.games && mine != null ? t.perGame - mine : null;
+  const kpi = (label, value, unit, cls = '') => {
+    const d = el('div', null, { className: `kpi ${cls}` });
+    d.append(el('small', label), el('b', value), el('i', unit));
+    return d;
+  };
+  const kpis = el('div', null, { className: 'kpis' });
+  kpis.append(
+    kpi(`${p.opponent} cedeu a ${group}s`, fmt(t.perGame), 'pts/jogo', 'main'),
+    kpi('Jogos na amostra', String(t.games), `de ${n}`),
+    kpi('Por jogador', fmt(t.perPlayer), 'pts'),
+    kpi(`Média de ${p.name.split(' ').slice(-1)[0]}`, fmt(mine), 'pts/jogo'),
+  );
+  box.append(kpis);
+  const text = delta == null ? '' : `${p.opponent} cedeu ${fmt(t.perGame)} pts/jogo a ${group}s, ${fmt(Math.abs(delta))} ${delta >= 0 ? 'acima' : 'abaixo'} da média de ${p.name} (${fmt(mine)}).`;
+  if (delta != null) {
+    const sign = el('p', `${delta >= 0 ? '+' : '−'}${fmt(Math.abs(delta))} pts/jogo contra a média dele (${fmt(mine)})`, { className: delta >= 0 ? 'up' : 'down' });
+    sign.style.margin = '-8px 0 16px';
+    box.append(sign);
+  } else {
+    const sign = el('p', 'Sem jogos dele na janela para comparar.', { className: 'note' });
+    sign.style.margin = '-8px 0 16px';
+    sign.style.fontSize = '14px';
+    box.append(sign);
+  }
+  if (t.games && t.games < n) box.append(el('p', `Amostra pequena: só ${t.games} jogo(s) na janela de ${n}.`, { className: 'note' }));
+  const table = el('table');
+  const head = el('tr');
+  const idp = isIdp(group);
+  for (const [hd, num] of [['Sem'], [`${group} que enfrentou ${p.opponent}`], ['Time'], ['Snaps', 1], [group === 'QB' ? 'Cmp/Tent/Jds' : idp ? 'Tkl/Sacks/PD/INT' : 'Rec/Alvos/Jds', 1], ['Pts (sua liga)', 1]])
+    head.append(el('th', hd, { className: num ? 'num' : '' }));
+  table.append(head);
+  const lineOf = (s) => group === 'QB'
+    ? [s.pass_cmp ?? 0, s.pass_att ?? 0, s.pass_yd ?? 0]
+    : idp
+      ? [s.idp_tkl ?? 0, s.idp_sack ?? 0, s.idp_pass_def ?? 0, s.idp_int ?? 0]
+      : [s.rec ?? 0, s.rec_tgt ?? 0, (s.rec_yd ?? 0) + (s.rush_yd ?? 0)];
+  const ptsCell = (v, max, cls = '') => {
+    const cell = el('td', null, { className: `num ${cls}` });
+    const w = el('div', null, { className: 'pts' });
+    const bar = el('span', null, { className: 'bar' });
+    bar.style.width = `${Math.max(0, v) / max * 80}px`;
+    w.append(bar, el('span', fmt(v)));
+    cell.append(w);
+    return cell;
+  };
+  const byWeek = new Map();
+  for (const g of rows) {
+    if (!byWeek.has(g.week)) byWeek.set(g.week, []);
+    byWeek.get(g.week).push({ g, pts: score(g.stats, scoring) });
+  }
+  const totals = [...byWeek.values()].map((l) => l.reduce((a, x) => a + x.pts, 0));
+  const maxTotal = Math.max(...totals, 1);
+  const maxPlayer = Math.max(...rows.map((g) => score(g.stats, scoring)), 1);
+  const body = el('tbody');
+  [...byWeek.entries()].forEach(([wk, list], i) => {
+    const sum = el('tr', null, { className: 'wk' });
+    const btn = el('button', String(wk), { type: 'button', className: 'tog' });
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-label', `Semana ${wk}: ${list.length} ${group}(s), ver jogadores`);
+    const tot = lineOf({}).map(() => 0); // do tamanho da linha: IDP tem 4 valores, ataque 3
+    list.forEach(({ g }) => lineOf(g.stats).forEach((v, k) => { tot[k] += v; }));
+    const first = el('td'); first.append(btn);
+    sum.append(first, el('td', `${idp ? 'top ' : ''}${list.length} ${group}${list.length > 1 ? 's' : ''}`), el('td', ''), el('td', ''),
+      el('td', tot.join('/'), { className: 'num' }), ptsCell(totals[i], maxTotal, 'tot'));
+    const details = list.map(({ g, pts }) => {
+      const pct = snapPct(g.stats, group);
+      const tr = el('tr', null, { className: 'pl', hidden: true });
+      tr.append(el('td', ''), el('td', g.name), el('td', g.team),
+        el('td', pct == null ? '—' : `${pct}%`, { className: 'num' }),
+        el('td', lineOf(g.stats).join('/'), { className: 'num' }), ptsCell(pts, maxPlayer));
+      return tr;
+    });
+    sum.addEventListener('click', () => { // a linha inteira alterna; o botão (teclado/leitor de tela) só propaga o clique
+      const open = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', String(open));
+      details.forEach((r) => { r.hidden = !open; });
+    });
+    body.append(sum, ...details);
+  });
+  table.append(body);
+  const wrap = el('div', null, { className: 'table-wrap' });
+  wrap.append(table);
+  box.append(wrap);
+  if (group !== 'QB' && !idp) box.append(el('p', 'Jardas = recepção + corrida.', { className: 'note' }));
+  if (idp) box.append(el('p', `IDP: só os ${IDP_TOP} que mais pontuaram em cada jogo do adversário.`, { className: 'note' }));
+  return done({ delta, text });
+}
+renderPanels();
+</script>
+</body>
+</html>

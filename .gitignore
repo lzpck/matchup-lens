@@ -1,0 +1,5 @@
+.gstack/
+.taste-skill/
+.claude/
+__pycache__/
+node_modules/
